@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>버스 도착 정보 - 설정</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>버스 도착 정보 설정</h1>
+
+      <section class="card">
+        <h2>1. API 키 설정</h2>
+        <p class="help">
+          공공데이터포털(<a href="https://www.data.go.kr" target="_blank">data.go.kr</a>)에서
+          <b>국토교통부 TAGO 전국버스정보</b>(정류소정보·도착정보) 활용신청 후 발급받은
+          <b>일반 인증키(Decoding)</b>를 입력하세요.
+        </p>
+        <div class="field-row">
+          <input id="apiKey" type="text" placeholder="일반 인증키 (Decoding) 붙여넣기" />
+          <button id="saveKey" class="primary">저장</button>
+        </div>
+        <div id="keyStatus" class="status-msg"></div>
+      </section>
+
+      <section class="card">
+        <h2>2. 정류장 / 버스 추가</h2>
+        <div class="field-row">
+          <select id="city"></select>
+        </div>
+        <div class="field-row">
+          <input id="stopName" type="text" placeholder="정류장 이름 (예: 강남역)" />
+          <button id="searchStop" class="primary">검색</button>
+        </div>
+        <div id="searchStatus" class="status-msg"></div>
+        <div id="stopResults" class="results"></div>
+
+        <div id="addArea" class="add-area" hidden>
+          <div class="selected">선택: <span id="selectedStop"></span></div>
+          <div class="field-row">
+            <input id="busNo" type="text" placeholder="버스 번호 (예: 146)" />
+            <button id="addFav" class="primary">추가</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. 등록된 항목</h2>
+        <div id="favList"></div>
+      </section>
+    </div>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
