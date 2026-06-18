@@ -1,7 +1,7 @@
-// 공공데이터포털(국토교통부 TAGO) 전국 버스정보 API 연동 모듈
-// 서울·경기를 포함한 전국 정류장 검색 / 도착정보 조회를 단일 키로 처리합니다.
+// 경기도 버스정보(GBIS) API 연동 모듈 — 공공데이터포털 제공기관 6410000
+// 정류소 검색 / 정류소 경유노선 / 버스 도착정보를 단일 키로 처리합니다.
 
-const BASE = "https://apis.data.go.kr/1613000";
+const BASE = "https://apis.data.go.kr/6410000";
 
 // ---- 저장소 헬퍼 ---------------------------------------------------------
 
@@ -33,69 +33,81 @@ export async function setFavorites(favorites) {
 
 // ---- API 호출 ------------------------------------------------------------
 
-// 공공데이터 응답은 결과 1건이면 객체, 여러 건이면 배열, 0건이면 ""로 옵니다.
-function toArray(items) {
-  if (!items || items === "") return [];
-  const item = items.item;
-  if (!item) return [];
-  return Array.isArray(item) ? item : [item];
+// 결과가 1건이면 객체로 올 수 있어 배열로 정규화
+function toArray(v) {
+  if (!v) return [];
+  return Array.isArray(v) ? v : [v];
 }
 
 async function call(path, params) {
   const apiKey = await getApiKey();
   if (!apiKey) {
-    throw new Error("API 키가 설정되지 않았습니다. 옵션에서 키를 입력하세요.");
+    throw new Error("API 키가 설정되지 않았습니다. config.js 또는 옵션에서 키를 입력하세요.");
   }
 
   const usp = new URLSearchParams({
-    serviceKey: apiKey, // 디코딩된 키 입력 시 URLSearchParams가 인코딩 처리
-    _type: "json",
-    numOfRows: "1000",
-    pageNo: "1",
+    serviceKey: apiKey, // 디코딩 키 입력 시 URLSearchParams가 인코딩 처리
+    format: "json",
     ...params,
   });
 
   const res = await fetch(`${BASE}/${path}?${usp.toString()}`);
-  if (!res.ok) throw new Error(`요청 실패 (HTTP ${res.status})`);
+  if (res.status === 401) {
+    throw new Error("키가 거부됨(401). 키가 정확한지 확인하세요.");
+  }
+  if (res.status === 403) {
+    throw new Error("접근 거부(403). 경기도 버스 API 활용신청/승인 상태를 확인하세요.");
+  }
+  if (!res.ok) {
+    throw new Error(`요청 실패 (HTTP ${res.status})`);
+  }
 
   const text = await res.text();
   let data;
   try {
     data = JSON.parse(text);
   } catch {
-    // 키 오류 등은 XML로 내려오는 경우가 많음
     const m =
       text.match(/<returnAuthMsg>(.*?)<\/returnAuthMsg>/) ||
+      text.match(/<resultMessage>(.*?)<\/resultMessage>/) ||
       text.match(/<errMsg>(.*?)<\/errMsg>/);
     throw new Error(
-      m
-        ? `API 오류: ${m[1]}`
-        : "응답을 해석할 수 없습니다. API 키와 활용신청 상태를 확인하세요.",
+      m ? `API 오류: ${m[1]}` : "응답을 해석할 수 없습니다. 키와 활용신청 상태를 확인하세요."
     );
   }
 
-  const header = data?.response?.header;
-  if (header && header.resultCode && header.resultCode !== "00") {
-    throw new Error(`API 오류: ${header.resultMsg || header.resultCode}`);
+  const header = data?.response?.msgHeader;
+  const body = data?.response?.msgBody;
+  const code = header?.resultCode;
+  // GBIS resultCode: 0 = 정상, 4 = 결과 없음(빈 목록). 그 외는 오류로 처리.
+  if (code != null && Number(code) !== 0 && Number(code) !== 4) {
+    throw new Error(`API 오류: ${header?.resultMessage || code}`);
   }
 
-  return toArray(data?.response?.body?.items);
+  return body || {};
 }
 
-// 도시 코드 목록: { citycode, cityname }
-export function getCityCodes() {
-  return call("BusSttnInfoInqireService/getCtyCodeList", {});
+// 정류소 이름 검색
+// 반환: { stationId, stationName, mobileNo(정류소번호), regionName, x, y }
+export async function searchStations(keyword) {
+  const body = await call("busstationservice/v2/getBusStationListv2", { keyword });
+  return toArray(body.busStationList);
 }
 
-// 정류장 이름으로 검색: { nodeid, nodenm, nodeno, gpslati, gpslong }
-export function searchStops(cityCode, nodeNm) {
-  return call("BusSttnInfoInqireService/getSttnNoList", { cityCode, nodeNm });
-}
-
-// 특정 정류장의 도착정보: { routeno, arrtime(초), arrprevstationcnt, nodenm, ... }
-export function getArrivals(cityCode, nodeId) {
-  return call("ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList", {
-    cityCode,
-    nodeId,
+// 특정 정류소를 경유하는 노선 목록
+// 반환: { routeId, routeName(노선번호), routeTypeName, regionName, ... }
+export async function getStationRoutes(stationId) {
+  const body = await call("busstationservice/v2/getBusStationViaRouteListv2", {
+    stationId,
   });
+  return toArray(body.busRouteList);
+}
+
+// 특정 정류소의 버스 도착정보
+// 반환: { routeId, predictTime1(분), locationNo1(남은 정류장 수), flag, ... }
+export async function getArrivals(stationId) {
+  const body = await call("busarrivalservice/v2/getBusArrivalListv2", {
+    stationId,
+  });
+  return toArray(body.busArrivalList);
 }

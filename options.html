@@ -13,8 +13,9 @@
         <h2>1. API 키 설정</h2>
         <p class="help">
           공공데이터포털(<a href="https://www.data.go.kr" target="_blank">data.go.kr</a>)에서
-          <b>국토교통부 TAGO 전국버스정보</b>(정류소정보·도착정보) 활용신청 후 발급받은
-          <b>일반 인증키(Decoding)</b>를 입력하세요.
+          <b>경기도_버스정류소조회 / 경기도_정류소 경유노선 목록조회 / 경기도_버스도착정보조회</b>
+          활용신청 후 발급받은 <b>일반 인증키(Decoding)</b>를 입력하세요.
+          (코드의 <code>config.js</code>에 키를 넣었다면 비워두어도 됩니다.)
         </p>
         <div class="field-row">
           <input id="apiKey" type="text" placeholder="일반 인증키 (Decoding) 붙여넣기" />
@@ -26,21 +27,17 @@
       <section class="card">
         <h2>2. 정류장 / 버스 추가</h2>
         <div class="field-row">
-          <select id="city"></select>
-        </div>
-        <div class="field-row">
-          <input id="stopName" type="text" placeholder="정류장 이름 (예: 강남역)" />
+          <input id="stopName" type="text" placeholder="정류장 이름 (예: 수원역)" />
           <button id="searchStop" class="primary">검색</button>
         </div>
         <div id="searchStatus" class="status-msg"></div>
         <div id="stopResults" class="results"></div>
 
-        <div id="addArea" class="add-area" hidden>
-          <div class="selected">선택: <span id="selectedStop"></span></div>
-          <div class="field-row">
-            <input id="busNo" type="text" placeholder="버스 번호 (예: 146)" />
-            <button id="addFav" class="primary">추가</button>
-          </div>
+        <div id="routeArea" class="add-area" hidden>
+          <div class="selected">정류장: <span id="selectedStop"></span></div>
+          <div class="hint">등록할 버스 노선을 선택하세요.</div>
+          <div id="routeStatus" class="status-msg"></div>
+          <div id="routeResults" class="results"></div>
         </div>
       </section>
 

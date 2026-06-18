@@ -3,8 +3,8 @@ import {
   setApiKey,
   getFavorites,
   setFavorites,
-  getCityCodes,
-  searchStops,
+  searchStations,
+  getStationRoutes,
 } from "./api.js";
 
 // ---- API 키 -------------------------------------------------------------
@@ -14,51 +14,22 @@ const keyStatus = document.getElementById("keyStatus");
 
 getApiKey().then((k) => {
   keyInput.value = k;
-  if (k) initCities();
 });
 
 document.getElementById("saveKey").onclick = async () => {
   await setApiKey(keyInput.value.trim());
   keyStatus.textContent = "저장되었습니다.";
   setTimeout(() => (keyStatus.textContent = ""), 2000);
-  initCities();
 };
-
-// ---- 도시 목록 ----------------------------------------------------------
-
-const citySel = document.getElementById("city");
-
-async function initCities() {
-  if (citySel.dataset.loaded) return;
-  citySel.innerHTML = `<option>불러오는 중...</option>`;
-  try {
-    let { cityCodes } = await chrome.storage.local.get("cityCodes");
-    if (!cityCodes || !cityCodes.length) {
-      cityCodes = await getCityCodes();
-      await chrome.storage.local.set({ cityCodes });
-    }
-    cityCodes.sort((a, b) =>
-      String(a.cityname).localeCompare(String(b.cityname), "ko")
-    );
-    citySel.innerHTML = cityCodes
-      .map((c) => `<option value="${c.citycode}">${c.cityname}</option>`)
-      .join("");
-    citySel.dataset.loaded = "1";
-  } catch (e) {
-    citySel.innerHTML = `<option>불러오기 실패</option>`;
-    document.getElementById("searchStatus").textContent = e.message;
-  }
-}
 
 // ---- 정류장 검색 --------------------------------------------------------
 
 const stopResults = document.getElementById("stopResults");
-const addArea = document.getElementById("addArea");
-const busInput = document.getElementById("busNo");
+const routeArea = document.getElementById("routeArea");
+const routeResults = document.getElementById("routeResults");
 const selectedLabel = document.getElementById("selectedStop");
 const searchStatus = document.getElementById("searchStatus");
-
-let selectedStop = null;
+const routeStatus = document.getElementById("routeStatus");
 
 document.getElementById("searchStop").onclick = doSearch;
 document.getElementById("stopName").addEventListener("keydown", (e) => {
@@ -66,46 +37,37 @@ document.getElementById("stopName").addEventListener("keydown", (e) => {
 });
 
 async function doSearch() {
-  const name = document.getElementById("stopName").value.trim();
-  const cityCode = citySel.value;
-  const cityName = citySel.options[citySel.selectedIndex]?.text || "";
-
-  if (!cityCode || citySelInvalid()) {
-    searchStatus.textContent = "먼저 API 키를 저장하고 도시를 선택하세요.";
-    return;
-  }
-  if (!name) {
+  const keyword = document.getElementById("stopName").value.trim();
+  if (!keyword) {
     searchStatus.textContent = "정류장 이름을 입력하세요.";
     return;
   }
 
   searchStatus.textContent = "검색 중...";
   stopResults.innerHTML = "";
-  selectedStop = null;
-  addArea.hidden = true;
+  routeArea.hidden = true;
 
   try {
-    const stops = await searchStops(cityCode, name);
-    if (!stops.length) {
+    const stations = await searchStations(keyword);
+    if (!stations.length) {
       searchStatus.textContent = "검색 결과가 없습니다.";
       return;
     }
-    searchStatus.textContent = `${stops.length}개 결과`;
-    for (const s of stops) {
+    searchStatus.textContent = `${stations.length}개 결과`;
+    for (const s of stations) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "stop-item";
-      b.innerHTML = `${s.nodenm} <span class="muted">${
-        s.nodeno ? `· ${s.nodeno}` : ""
-      }</span>`;
+      b.innerHTML = `${s.stationName} <span class="muted">${
+        s.mobileNo ? `· ${s.mobileNo.trim()} ` : ""
+      }${s.regionName || ""}</span>`;
       b.onclick = () =>
         selectStop(
           {
-            cityCode,
-            cityName,
-            nodeId: s.nodeid,
-            nodeNm: s.nodenm,
-            nodeNo: s.nodeno,
+            stationId: s.stationId,
+            stationName: s.stationName,
+            mobileNo: (s.mobileNo || "").trim(),
+            regionName: s.regionName,
           },
           b
         );
@@ -116,58 +78,60 @@ async function doSearch() {
   }
 }
 
-function citySelInvalid() {
-  return !citySel.dataset.loaded;
-}
-
-function selectStop(stop, btn) {
-  selectedStop = stop;
+async function selectStop(stop, btn) {
   [...stopResults.children].forEach((c) => c.classList.remove("active"));
   btn.classList.add("active");
-  selectedLabel.textContent = `${stop.nodeNm}${
-    stop.nodeNo ? ` (${stop.nodeNo})` : ""
+  selectedLabel.textContent = `${stop.stationName}${
+    stop.mobileNo ? ` (${stop.mobileNo})` : ""
   }`;
-  addArea.hidden = false;
-  busInput.value = "";
-  busInput.focus();
+  routeArea.hidden = false;
+  routeResults.innerHTML = "";
+  routeStatus.textContent = "노선 불러오는 중...";
+
+  try {
+    const routes = await getStationRoutes(stop.stationId);
+    if (!routes.length) {
+      routeStatus.textContent = "이 정류장의 노선 정보를 찾을 수 없습니다.";
+      return;
+    }
+    routeStatus.textContent = "";
+    for (const r of routes) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "stop-item";
+      b.innerHTML = `${r.routeName}번 <span class="muted">${
+        r.routeTypeName || ""
+      }</span>`;
+      b.onclick = () =>
+        addFav({
+          ...stop,
+          routeId: r.routeId,
+          routeName: r.routeName,
+        });
+      routeResults.appendChild(b);
+    }
+  } catch (e) {
+    routeStatus.textContent = e.message;
+  }
 }
 
 // ---- 즐겨찾기 추가 / 목록 -----------------------------------------------
 
-document.getElementById("addFav").onclick = addFav;
-busInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") addFav();
-});
-
-async function addFav() {
-  if (!selectedStop) return;
-  const routeNo = busInput.value.trim();
-  if (!routeNo) {
-    searchStatus.textContent = "버스 번호를 입력하세요.";
-    return;
-  }
-
+async function addFav(stop) {
   const favs = await getFavorites();
-  const fav = { id: Date.now().toString(36), routeNo, ...selectedStop };
-
   if (
     favs.some(
-      (f) =>
-        f.nodeId === fav.nodeId &&
-        f.cityCode === fav.cityCode &&
-        String(f.routeNo) === routeNo
+      (f) => f.stationId === stop.stationId && String(f.routeId) === String(stop.routeId)
     )
   ) {
-    searchStatus.textContent = "이미 등록된 항목입니다.";
+    routeStatus.textContent = "이미 등록된 항목입니다.";
     return;
   }
-
-  favs.push(fav);
+  favs.push({ id: Date.now().toString(36), ...stop });
   await setFavorites(favs);
   renderFavs();
-  addArea.hidden = true;
-  busInput.value = "";
-  searchStatus.textContent = "추가되었습니다.";
+  routeArea.hidden = true;
+  searchStatus.textContent = `추가됨: ${stop.routeName}번 · ${stop.stationName}`;
 }
 
 const favList = document.getElementById("favList");
@@ -182,9 +146,9 @@ async function renderFavs() {
   for (const f of favs) {
     const row = document.createElement("div");
     row.className = "fav-row";
-    row.innerHTML = `<div><b>${f.routeNo}번</b> · ${f.nodeNm}${
-      f.nodeNo ? ` (${f.nodeNo})` : ""
-    } <span class="muted">${f.cityName || f.cityCode}</span></div>`;
+    row.innerHTML = `<div><b>${f.routeName}번</b> · ${f.stationName}${
+      f.mobileNo ? ` (${f.mobileNo})` : ""
+    } <span class="muted">${f.regionName || "경기"}</span></div>`;
     const del = document.createElement("button");
     del.textContent = "삭제";
     del.className = "del";
