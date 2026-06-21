@@ -1,4 +1,4 @@
-import { getFavorites, getArrivals, getApiKey } from "./api.js";
+import { getFavorites, getArrivals } from "./api.js";
 
 // 팝업을 열면(툴바 클릭이든 알림 팝업 창이든) 아이콘 배지를 지운다.
 chrome.action?.setBadgeText?.({ text: "" });
@@ -27,12 +27,6 @@ function showNotice(html) {
 }
 
 async function render() {
-  const key = await getApiKey();
-  if (!key) {
-    showNotice(`API 키가 필요합니다. <a id="opt">옵션 열기</a>`);
-    return;
-  }
-
   const favs = await getFavorites();
   if (favs.length === 0) {
     showNotice(`등록된 정류장이 없습니다. <a id="opt">정류장 추가</a>`);

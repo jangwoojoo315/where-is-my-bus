@@ -23,5 +23,5 @@
     "type": "module"
   },
   "permissions": ["storage", "alarms", "notifications"],
-  "host_permissions": ["https://apis.data.go.kr/*", "http://ws.bus.go.kr/*"]
+  "host_permissions": ["https://where-is-my-bus-proxy.sunjang315.workers.dev/*"]
 }

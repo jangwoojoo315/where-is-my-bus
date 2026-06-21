@@ -4,20 +4,16 @@
 
 ## 동작 방식
 
-- 공공데이터포털(data.go.kr)에서 발급한 **하나의 인증키**로 두 지역 API를 모두 호출합니다.
-  - **경기**: 경기도 버스정보(GBIS) API (제공기관 코드 6410000, `apis.data.go.kr`)
-  - **서울**: 서울 TOPIS 버스 API (`ws.bus.go.kr`, https 미지원이라 http로 호출)
+- 확장은 인증키를 직접 갖지 않고, **프록시(Cloudflare Worker)**를 호출합니다. 프록시가 키를 보관하고 응답을 캐싱해 일일 한도를 보호합니다. (`proxy/` 폴더)
+- 프록시가 두 지역 공공 API를 호출합니다 (data.go.kr 인증키 1개 공용).
+  - **경기**: 경기도 버스정보(GBIS) API (제공기관 코드 6410000)
+  - **서울**: 서울 TOPIS 버스 API (`ws.bus.go.kr`, https 미지원이라 프록시에서 http로 호출)
 - 정류장을 검색하면 서울·경기를 함께 검색해 결과를 보여줍니다.
 - 도착정보는 팝업을 열 때마다, 그리고 열려 있는 동안 30초마다 갱신됩니다.
 
-## 설치 (개발자 모드)
+## 설정 순서
 
-1. 크롬에서 `chrome://extensions` 접속
-2. 우측 상단 **개발자 모드** 켜기
-3. **압축해제된 확장 프로그램을 로드** 클릭 → 이 폴더(`where-is-my-bus`) 선택
-
-## API 키 발급
-
+### 1. API 키 발급 (data.go.kr)
 1. [공공데이터포털](https://www.data.go.kr) 회원가입/로그인
 2. 다음 API들에 **활용신청** (하나의 키로 모두 사용됨):
    - **경기 (제공기관: 경기도)**
@@ -27,20 +23,25 @@
    - **서울 (제공기관: 서울특별시)**
      - [서울특별시_정류소정보조회 서비스](https://www.data.go.kr/data/15000303/openapi.do)
        — `getStationByName`(정류소 검색) + `getStationByUid`(정류소 경유노선·도착정보)를 함께 사용
-3. 마이페이지 → 인증키 발급 현황에서 **일반 인증키(Decoding)** 복사
+3. 마이페이지에서 **일반 인증키(Decoding)** 복사. (인코딩 키 아님)
 
-> - 인코딩 키가 아니라 **Decoding(디코딩) 키**를 입력하세요. (앱이 자동으로 인코딩 처리)
-> - 승인 후 키가 활성화되기까지 시간이 걸릴 수 있습니다. 그동안은 403/401이 날 수 있습니다.
-
-## API 키 설정
-
-`config.example.js`를 복사해 `config.js`로 만들고 키를 넣습니다.
-
+### 2. 프록시 배포 (Cloudflare Worker)
+`proxy/README.md` 참고. 요약:
 ```bash
-cp config.example.js config.js   # 그 후 config.js 의 API_KEY 에 키 입력
+cd proxy
+wrangler login
+wrangler secret put DATA_GO_KR_KEY   # 위 Decoding 키 입력
+wrangler deploy
 ```
+배포된 `https://...workers.dev` 주소를 받습니다.
 
-`config.js`는 `.gitignore`로 git에 올라가지 않습니다.
+### 3. 확장에 프록시 주소 넣기
+- `api.js` 상단 `PROXY_BASE` 를 배포 주소로 변경
+- `manifest.json` 의 `host_permissions` 도 같은 주소로 변경
+
+### 4. 확장 로드
+1. `chrome://extensions` → **개발자 모드** 켜기
+2. **압축해제된 확장 프로그램을 로드** → 이 폴더 선택
 
 ## 사용법
 
@@ -56,14 +57,14 @@ cp config.example.js config.js   # 그 후 config.js 의 API_KEY 에 키 입력
 | 파일 | 설명 |
 |------|------|
 | `manifest.json` | 확장 프로그램 설정 (MV3) |
-| `api.js` | 경기(GBIS)·서울(TOPIS) API 호출 및 저장소 모듈 |
+| `api.js` | 프록시 호출 및 응답 정규화·저장소 모듈 |
 | `background.js` | 백그라운드 서비스 워커 — 지정 시각 알람·도착 알림 |
-| `config.js` | API 키 (git 제외) — `config.example.js` 복사해서 생성 |
 | `popup.html/.css/.js` | 도착 정보 표시 팝업 |
 | `options.html/.css/.js` | 정류장·버스 등록 및 알림 시간 설정 화면 |
 | `icons/` | 확장 프로그램 아이콘 |
+| `proxy/` | Cloudflare Worker 프록시 (키 보관 + 캐싱) |
 
 ## 참고
 
 - 일부 정류장/노선은 실시간 도착정보가 제공되지 않을 수 있으며, 그 경우 "운행 정보 없음"으로 표시됩니다.
-- 등록 정보(즐겨찾기, 옵션에서 입력한 키)는 `chrome.storage.sync`에 저장되어 같은 크롬 계정 간 동기화됩니다.
+- 등록 정보(즐겨찾기·알림 설정)는 `chrome.storage.sync`에 저장되어 같은 크롬 계정 간 동기화됩니다.

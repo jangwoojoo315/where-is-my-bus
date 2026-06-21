@@ -1,0 +1,7 @@
+name = "where-is-my-bus-proxy"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+# 인증키는 코드/레포에 두지 않고 시크릿으로 주입한다:
+#   npx wrangler secret put DATA_GO_KR_KEY
+# (data.go.kr 일반 인증키 Decoding 값을 입력)
