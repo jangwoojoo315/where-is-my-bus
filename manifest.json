@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "버스 도착 정보",
+  "name": "슬슬나가",
   "version": "1.0.0",
   "description": "서울·경기 정류장에 등록한 버스가 몇 분 뒤 도착하는지 보여줍니다.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "버스 도착 정보",
+    "default_title": "슬슬나가",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
