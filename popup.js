@@ -38,22 +38,24 @@ async function render() {
 
   statusEl.textContent = "불러오는 중...";
 
-  // 같은 정류장은 한 번만 호출하도록 묶기
-  const stationIds = [...new Set(favs.map((f) => f.stationId))];
+  // 같은 (제공자+정류장)은 한 번만 호출하도록 묶기
+  const stationKey = (f) => `${f.provider || "gyeonggi"}:${f.stationId}`;
+  const stations = {};
+  for (const f of favs) stations[stationKey(f)] = f;
   const arrivalsByStation = {};
   await Promise.all(
-    stationIds.map(async (sid) => {
+    Object.entries(stations).map(async ([key, f]) => {
       try {
-        arrivalsByStation[sid] = await getArrivals(sid);
+        arrivalsByStation[key] = await getArrivals(f.provider || "gyeonggi", f.stationId);
       } catch (e) {
-        arrivalsByStation[sid] = { error: e.message };
+        arrivalsByStation[key] = { error: e.message };
       }
     })
   );
 
   listEl.innerHTML = "";
   for (const f of favs) {
-    const arr = arrivalsByStation[f.stationId];
+    const arr = arrivalsByStation[stationKey(f)];
     let info;
 
     if (arr && arr.error) {

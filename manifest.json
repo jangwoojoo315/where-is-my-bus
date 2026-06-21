@@ -19,5 +19,5 @@
   },
   "options_page": "options.html",
   "permissions": ["storage"],
-  "host_permissions": ["https://apis.data.go.kr/*"]
+  "host_permissions": ["https://apis.data.go.kr/*", "http://ws.bus.go.kr/*"]
 }

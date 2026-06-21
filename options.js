@@ -41,15 +41,16 @@ async function doSearch() {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "stop-item";
-      b.innerHTML = `${s.stationName} <span class="muted">${
-        s.mobileNo ? `· ${s.mobileNo.trim()} ` : ""
-      }${s.regionName || ""}</span>`;
+      b.innerHTML = `<span class="badge">${s.regionName || ""}</span> ${
+        s.stationName
+      } <span class="muted">${s.mobileNo ? `· ${s.mobileNo}` : ""}</span>`;
       b.onclick = () =>
         selectStop(
           {
+            provider: s.provider,
             stationId: s.stationId,
             stationName: s.stationName,
-            mobileNo: (s.mobileNo || "").trim(),
+            mobileNo: s.mobileNo || "",
             regionName: s.regionName,
           },
           b
@@ -72,7 +73,7 @@ async function selectStop(stop, btn) {
   routeStatus.textContent = "노선 불러오는 중...";
 
   try {
-    const routes = await getStationRoutes(stop.stationId);
+    const routes = await getStationRoutes(stop.provider, stop.stationId);
     if (!routes.length) {
       routeStatus.textContent = "이 정류장의 노선 정보를 찾을 수 없습니다.";
       return;
@@ -104,7 +105,10 @@ async function addFav(stop) {
   const favs = await getFavorites();
   if (
     favs.some(
-      (f) => f.stationId === stop.stationId && String(f.routeId) === String(stop.routeId)
+      (f) =>
+        (f.provider || "gyeonggi") === stop.provider &&
+        f.stationId === stop.stationId &&
+        String(f.routeId) === String(stop.routeId)
     )
   ) {
     routeStatus.textContent = "이미 등록된 항목입니다.";
