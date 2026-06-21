@@ -6,6 +6,14 @@ chrome.action?.setBadgeText?.({ text: "" });
 const listEl = document.getElementById("list");
 const statusEl = document.getElementById("status");
 
+// 외부(공공 API) 문자열을 innerHTML 에 넣기 전에 HTML 이스케이프
+function esc(v) {
+  return String(v ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
 function fmtMin(min) {
   if (min == null || min === "") return null;
   const m = Number(min);
@@ -56,7 +64,7 @@ async function render() {
     let info;
 
     if (arr && arr.error) {
-      info = `<span class="err">${arr.error}</span>`;
+      info = `<span class="err">${esc(arr.error)}</span>`;
     } else {
       const match = (arr || []).find(
         (a) => String(a.routeId) === String(f.routeId)
@@ -69,7 +77,7 @@ async function render() {
         if (t1) {
           const cnt =
             match.locationNo1 != null && match.locationNo1 !== ""
-              ? ` <span class="muted">(${match.locationNo1}정거장 전)</span>`
+              ? ` <span class="muted">(${esc(match.locationNo1)}정거장 전)</span>`
               : "";
           parts.push(`<b>${t1}</b>${cnt}`);
         }
@@ -83,12 +91,12 @@ async function render() {
     row.className = "row";
     row.innerHTML = `
       <div class="row-main">
-        <div class="bus">${f.routeName}번</div>
+        <div class="bus">${esc(f.routeName)}번</div>
         <div class="arr">${info}</div>
       </div>
-      <div class="stop">${f.stationName}${
-      f.mobileNo ? ` · ${f.mobileNo}` : ""
-    } <span class="muted">(${f.regionName || "경기"})</span></div>`;
+      <div class="stop">${esc(f.stationName)}${
+      f.mobileNo ? ` · ${esc(f.mobileNo)}` : ""
+    } <span class="muted">(${esc(f.regionName || "경기")})</span></div>`;
     listEl.appendChild(row);
   }
 

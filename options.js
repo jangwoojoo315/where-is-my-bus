@@ -5,6 +5,14 @@ import {
   getStationRoutes,
 } from "./api.js";
 
+// 외부(공공 API) 문자열을 innerHTML 에 넣기 전에 HTML 이스케이프
+function esc(v) {
+  return String(v ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
 // ---- 정류장 검색 --------------------------------------------------------
 
 const stopResults = document.getElementById("stopResults");
@@ -41,9 +49,9 @@ async function doSearch() {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "stop-item";
-      b.innerHTML = `<span class="badge">${s.regionName || ""}</span> ${
+      b.innerHTML = `<span class="badge">${esc(s.regionName || "")}</span> ${esc(
         s.stationName
-      } <span class="muted">${s.mobileNo ? `· ${s.mobileNo}` : ""}</span>`;
+      )} <span class="muted">${s.mobileNo ? `· ${esc(s.mobileNo)}` : ""}</span>`;
       b.onclick = () =>
         selectStop(
           {
@@ -83,9 +91,9 @@ async function selectStop(stop, btn) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "stop-item";
-      b.innerHTML = `${r.routeName}번 <span class="muted">${
+      b.innerHTML = `${esc(r.routeName)}번 <span class="muted">${esc(
         r.routeTypeName || ""
-      }</span>`;
+      )}</span>`;
       b.onclick = () =>
         addFav({
           ...stop,
@@ -133,9 +141,9 @@ async function renderFavs() {
   for (const f of favs) {
     const row = document.createElement("div");
     row.className = "fav-row";
-    row.innerHTML = `<div><b>${f.routeName}번</b> · ${f.stationName}${
-      f.mobileNo ? ` (${f.mobileNo})` : ""
-    } <span class="muted">${f.regionName || "경기"}</span></div>`;
+    row.innerHTML = `<div><b>${esc(f.routeName)}번</b> · ${esc(f.stationName)}${
+      f.mobileNo ? ` (${esc(f.mobileNo)})` : ""
+    } <span class="muted">${esc(f.regionName || "경기")}</span></div>`;
     const del = document.createElement("button");
     del.textContent = "삭제";
     del.className = "del";

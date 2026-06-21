@@ -45,9 +45,31 @@ function isId(v) {
   return /^\d+$/.test(v || "");
 }
 
+// IP별 레이트리밋 (메모리 기반, 1분 고정 윈도우).
+// 정상 사용자는 분당 한 자릿수라 안 걸리고, 한 IP의 한도 소진 공격을 억제한다.
+const RATE_LIMIT = 60; // IP당 분당 허용 요청 수
+const RATE_WINDOW = 60 * 1000;
+const rateMap = new Map();
+function rateLimited(ip) {
+  const now = Date.now();
+  const e = rateMap.get(ip);
+  if (!e || now - e.start >= RATE_WINDOW) {
+    if (rateMap.size > 5000) rateMap.clear(); // 단순 상한
+    rateMap.set(ip, { start: now, count: 1 });
+    return false;
+  }
+  e.count += 1;
+  return e.count > RATE_LIMIT;
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
+
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    if (rateLimited(ip)) {
+      return json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도하세요." }, 429);
+    }
 
     const key = env.DATA_GO_KR_KEY;
     if (!key) return json({ error: "서버에 API 키(DATA_GO_KR_KEY)가 설정되지 않았습니다." }, 500);
