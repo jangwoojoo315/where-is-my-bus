@@ -150,3 +150,85 @@ async function renderFavs() {
 }
 
 renderFavs();
+
+// ---- 자동 알림 시간 -----------------------------------------------------
+
+const alertEnabled = document.getElementById("alertEnabled");
+const alertTime = document.getElementById("alertTime");
+const alertStatus = document.getElementById("alertStatus");
+const osHint = document.getElementById("osHint");
+
+function selectedMode() {
+  const r = document.querySelector('input[name="alertMode"]:checked');
+  return r ? r.value : "inbrowser";
+}
+
+function syncOsHint() {
+  osHint.hidden = selectedMode() !== "os";
+}
+
+chrome.storage.sync.get(["alertEnabled", "alertTime", "alertMode"]).then((s) => {
+  alertEnabled.checked = !!s.alertEnabled;
+  alertTime.value = s.alertTime || "17:00";
+  const mode = s.alertMode || "inbrowser"; // 기본값: 브라우저 안에서
+  const radio = document.querySelector(`input[name="alertMode"][value="${mode}"]`);
+  if (radio) radio.checked = true;
+  syncOsHint();
+});
+
+document.querySelectorAll('input[name="alertMode"]').forEach((r) => {
+  r.addEventListener("change", syncOsHint);
+});
+
+document.getElementById("saveAlert").onclick = async () => {
+  if (alertEnabled.checked && !alertTime.value) {
+    alertStatus.textContent = "알림 시각을 입력하세요.";
+    return;
+  }
+  // background.js 가 storage 변경을 감지해 알람을 다시 예약한다.
+  await chrome.storage.sync.set({
+    alertEnabled: alertEnabled.checked,
+    alertTime: alertTime.value,
+    alertMode: selectedMode(),
+  });
+  alertStatus.textContent = alertEnabled.checked
+    ? `저장됨 — 매일 ${alertTime.value}에 알림`
+    : "알림을 껐습니다.";
+  setTimeout(() => (alertStatus.textContent = ""), 2500);
+};
+
+// 현재 선택한 방식 그대로 즉시 한 번 실행해 본다.
+document.getElementById("testAlert").onclick = async () => {
+  if (selectedMode() === "os") {
+    alertStatus.textContent = "OS 알림 테스트 중...";
+    chrome.notifications.create(`bus-test-${Date.now()}`, {
+      type: "basic",
+      iconUrl: "icons/icon128.png",
+      title: "슬슬나가 — 테스트",
+      message: "이 알림이 보이면 OS 알림은 정상입니다.",
+      priority: 2,
+    }, () => {
+      alertStatus.textContent = chrome.runtime.lastError
+        ? `알림 차단됨: ${chrome.runtime.lastError.message} — 시스템 알림 설정 확인`
+        : "OS 알림 표시됨. 안 보이면 시스템 알림 설정/집중모드를 확인하세요.";
+      setTimeout(() => (alertStatus.textContent = ""), 5000);
+    });
+  } else {
+    await chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
+    await chrome.action.setBadgeText({ text: "!" });
+    try {
+      await chrome.action.openPopup(); // 진짜 확장 팝업
+      alertStatus.textContent = "확장 팝업을 열고 아이콘에 배지를 표시했습니다.";
+    } catch {
+      await chrome.windows.create({
+        url: chrome.runtime.getURL("popup.html"),
+        type: "popup",
+        width: 380,
+        height: 520,
+        focused: true,
+      });
+      alertStatus.textContent = "팝업 창을 열었습니다(포커스 없어 작은 창으로 대체).";
+    }
+    setTimeout(() => (alertStatus.textContent = ""), 4000);
+  }
+};

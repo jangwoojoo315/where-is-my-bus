@@ -30,6 +30,46 @@
         <h2>2. 등록된 항목</h2>
         <div id="favList"></div>
       </section>
+
+      <section class="card">
+        <h2>3. 자동 알림 시간</h2>
+        <p class="help">
+          매일 지정한 시각에 등록한 버스의 도착정보를 크롬 알림으로 띄웁니다.
+          크롬이 실행 중이어야 동작하며, 완전히 종료돼 있으면 알림이 울리지 않습니다.
+        </p>
+        <label class="check-row">
+          <input id="alertEnabled" type="checkbox" />
+          매일 이 시각에 알림 받기
+        </label>
+
+        <div class="radio-group">
+          <label class="radio-row">
+            <input type="radio" name="alertMode" value="inbrowser" />
+            <span>
+              <b>브라우저 안에서</b> (팝업 창 + 아이콘 배지)
+              <span class="muted">— OS 설정 없이 바로 동작, 크롬 실행 중일 때</span>
+            </span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="alertMode" value="os" />
+            <span>
+              <b>OS 알림</b>
+              <span class="muted">— 크롬이 백그라운드여도 표시(시스템 알림 허용 필요)</span>
+            </span>
+          </label>
+        </div>
+        <p class="help" id="osHint" hidden>
+          OS 알림이 안 보이면 시스템 알림 설정(맥: 시스템 설정 → 알림 → Chrome /
+          윈도우: 설정 → 시스템 → 알림)과 집중 모드를 확인하세요.
+        </p>
+
+        <div class="field-row">
+          <input id="alertTime" type="time" />
+          <button id="saveAlert" class="primary">저장</button>
+          <button id="testAlert">지금 테스트</button>
+        </div>
+        <div id="alertStatus" class="status-msg"></div>
+      </section>
     </div>
     <script type="module" src="options.js"></script>
   </body>

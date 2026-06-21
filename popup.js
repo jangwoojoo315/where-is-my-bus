@@ -1,5 +1,8 @@
 import { getFavorites, getArrivals, getApiKey } from "./api.js";
 
+// 팝업을 열면(툴바 클릭이든 알림 팝업 창이든) 아이콘 배지를 지운다.
+chrome.action?.setBadgeText?.({ text: "" });
+
 const listEl = document.getElementById("list");
 const statusEl = document.getElementById("status");
 

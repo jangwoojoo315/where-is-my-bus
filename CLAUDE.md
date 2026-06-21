@@ -18,11 +18,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 아키텍처
 
-세 개의 진입점이 모두 `api.js`를 ES 모듈로 import하는 단순 구조다.
+진입점(팝업·옵션·백그라운드)이 모두 `api.js`를 ES 모듈로 import하는 단순 구조다.
 
 - **`api.js`** — 유일한 데이터 계층이자 **제공자 추상화 계층**. 저수준 호출은 `callGbis()`/`callSeoul()`로 나뉘고, 공개 함수 `searchStations`/`getStationRoutes(provider, …)`/`getArrivals(provider, …)`가 두 제공자의 응답을 **공통 형태로 정규화**해 반환한다. 저장소 헬퍼(`getApiKey`, `getFavorites`/`setFavorites`)도 여기 있다. 새 제공자/엔드포인트는 여기에만 추가하면 UI는 손대지 않아도 된다.
 - **`popup.js`** (`popup.html`) — 툴바 아이콘 팝업. 등록된 즐겨찾기의 도착정보를 표시. 열릴 때 + 30초마다(`setInterval`) 갱신.
-- **`options.js`** (`options.html`) — 정류장 검색 → 노선 선택 → 즐겨찾기 등록/삭제 화면.
+- **`options.js`** (`options.html`) — 정류장 검색 → 노선 선택 → 즐겨찾기 등록/삭제 + 자동 알림 시각 설정 화면.
+- **`background.js`** — 백그라운드 서비스 워커(ES 모듈). `chrome.alarms`로 사용자가 지정한 시각(매일)에 깨어나 **알림 방식(`alertMode`)에 따라 분기**한다: `"inbrowser"`(기본)는 배지를 표시하고 **`chrome.action.openPopup()`(진짜 툴바 팝업)을 먼저 시도 → 실패 시 `chrome.windows.create`로 작은 팝업 창 대체**, `"os"`는 `getArrivals`로 조회한 텍스트를 `chrome.notifications`로 띄운다. `api.js`를 그대로 import해 재사용한다.
 
 ### 핵심 흐름과 규칙
 
@@ -38,7 +39,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 권한 / 외부 의존성
 
 - `manifest.json`의 `host_permissions`는 `https://apis.data.go.kr/*`(경기)와 `http://ws.bus.go.kr/*`(서울). 서울은 **http**라 호스트 권한이 반드시 있어야 확장에서 fetch가 막히지 않는다. 다른 도메인 호출도 여기에 추가해야 한다.
-- `permissions`는 `storage`뿐. 백그라운드 서비스 워커나 content script는 없다.
+- `permissions`: `storage`(즐겨찾기·키·알림 설정), `alarms`(지정 시각 트리거), `notifications`(도착 알림). content script는 없다.
+- **알림 스케줄링**: 설정값 `alertEnabled`/`alertTime`("HH:MM")/`alertMode`(`"inbrowser"` 기본 | `"os"`)는 `chrome.storage.sync`에 저장된다. `background.js`는 `storage.onChanged`·`onInstalled`·`onStartup`에서 알람을 다시 잡고, 알람이 울리면 `triggerAlert()`를 실행한 뒤 **다음 날로 재예약**한다(드리프트 방지를 위해 `periodInMinutes` 대신 매번 `nextOccurrence()`로 재계산). 크롬이 완전히 종료돼 있으면 알람은 울리지 않는다. **OS 알림은 `notifications.create`가 성공해도(콜백에 id 반환) OS/집중모드가 화면 표시를 막을 수 있으므로** 기본값을 권한이 필요 없는 `"inbrowser"`로 둔다. 배지는 팝업이 열릴 때(`popup.js` 로드 시) 지운다.
 
 ## 작성 언어
 

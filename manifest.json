@@ -18,6 +18,10 @@
     "128": "icons/icon128.png"
   },
   "options_page": "options.html",
-  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "alarms", "notifications"],
   "host_permissions": ["https://apis.data.go.kr/*", "http://ws.bus.go.kr/*"]
 }
