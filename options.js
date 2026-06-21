@@ -1,26 +1,9 @@
 import {
-  getApiKey,
-  setApiKey,
   getFavorites,
   setFavorites,
   searchStations,
   getStationRoutes,
 } from "./api.js";
-
-// ---- API 키 -------------------------------------------------------------
-
-const keyInput = document.getElementById("apiKey");
-const keyStatus = document.getElementById("keyStatus");
-
-getApiKey().then((k) => {
-  keyInput.value = k;
-});
-
-document.getElementById("saveKey").onclick = async () => {
-  await setApiKey(keyInput.value.trim());
-  keyStatus.textContent = "저장되었습니다.";
-  setTimeout(() => (keyStatus.textContent = ""), 2000);
-};
 
 // ---- 정류장 검색 --------------------------------------------------------
 

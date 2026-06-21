@@ -18,10 +18,6 @@ export async function getApiKey() {
   return apiKey || "";
 }
 
-export async function setApiKey(apiKey) {
-  await chrome.storage.sync.set({ apiKey });
-}
-
 export async function getFavorites() {
   const { favorites } = await chrome.storage.sync.get("favorites");
   return favorites || [];

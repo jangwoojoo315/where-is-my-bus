@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **`api.js`** — 유일한 데이터 계층. GBIS API 호출 3종(`searchStations`, `getStationRoutes`, `getArrivals`)과 저장소 헬퍼(`getApiKey`/`setApiKey`, `getFavorites`/`setFavorites`)를 모두 담는다. 새 API 호출이나 저장 로직은 여기에 추가한다.
 - **`popup.js`** (`popup.html`) — 툴바 아이콘 팝업. 등록된 즐겨찾기의 도착정보를 표시. 열릴 때 + 30초마다(`setInterval`) 갱신.
-- **`options.js`** (`options.html`) — API 키 입력, 정류장 검색 → 노선 선택 → 즐겨찾기 등록/삭제 화면.
+- **`options.js`** (`options.html`) — 정류장 검색 → 노선 선택 → 즐겨찾기 등록/삭제 화면.
 
 ### 핵심 흐름과 규칙
 
